@@ -1,45 +1,10 @@
-#include <iostream>
+﻿#include <iostream>
+
+using namespace std;
 
 struct A;
 struct B;
 struct C;
-
-void collide(A const&, A const&)
-{
-    std::cout << "(A, A)\n";
-}
-void collide(B const&, B const&)
-{
-    std::cout << "(B, B)\n";
-}
-void collide(C const&, C const&)
-{
-    std::cout << "(C, C)\n";
-}
-void collide(A const&, B const&)
-{
-    std::cout << "(A, B)\n";
-}
-void collide(B const&, A const&)
-{
-    std::cout << "(B, A)\n";
-}
-void collide(A const&, C const&)
-{
-    std::cout << "(A, C)\n";
-}
-void collide(C const&, A const&)
-{
-    std::cout << "(C, A)\n";
-}
-void collide(C const&, B const&)
-{
-    std::cout << "(C, B)\n";
-}
-void collide(B const&, C const&)
-{
-    std::cout << "(B, C)\n";
-}
 
 struct Collider
 {
@@ -64,52 +29,52 @@ struct CollisionDispatcherBase
 template<class T>
 struct CollisionDispatcher : CollisionDispatcherBase
 {
-    CollisionDispatcher(T& t, Collider& c) : t { t }, c_ { c } {}
+    CollisionDispatcher(T& first, Collider& collider) : first_ { first }, collider_ { collider } {}
 
-    T&              t;
-    const Collider& c_;
+    T&              first_;
+    const Collider& collider_;
 
-    void collide(A& other) const override { c_.collide(t, other); }
-    void collide(B& other) const override { c_.collide(t, other); }
-    void collide(C& other) const override { c_.collide(t, other); }
+    void collide(A& other) const override { collider_.collide(first_, other); }
+    void collide(B& other) const override { collider_.collide(first_, other); }
+    void collide(C& other) const override { collider_.collide(first_, other); }
 };
 
 struct Base
 {
     virtual ~Base() {}
 
-    virtual void visit(Base& other, Collider& c)         = 0;
-    virtual void visit(CollisionDispatcherBase const& c) = 0;
+    virtual void collideWith(Base& other, Collider& c)   = 0;
+    virtual void accept(const CollisionDispatcherBase& c) = 0;
 };
 
 struct A : Base
 {
-    void visit(Base& other, Collider& c) override
+    void collideWith(Base& other, Collider& c) override
     {
         auto d = CollisionDispatcher<A> { *this, c };
-        other.visit(d);
+        other.accept(d);
     }
-    void visit(CollisionDispatcherBase const& c) override { c.collide(*this); }
+    void accept(CollisionDispatcherBase const& c) override { c.collide(*this); }
 };
 
 struct B : Base
 {
-    void visit(Base& other, Collider& c) override
+    void collideWith(Base& other, Collider& c) override
     {
         auto d = CollisionDispatcher<B> { *this, c };
-        other.visit(d);
+        other.accept(d);
     }
-    void visit(CollisionDispatcherBase const& c) override { c.collide(*this); }
+    void accept(CollisionDispatcherBase const& c) override { c.collide(*this); }
 };
 
 struct C : Base
 {
-    void visit(Base& other, Collider& c) override
+    void collideWith(Base& other, Collider& c) override
     {
         auto d = CollisionDispatcher<C> { *this, c };
-        other.visit(d);
+        other.accept(d);
     }
-    void visit(CollisionDispatcherBase const& c) override { c.collide(*this); }
+    void accept(CollisionDispatcherBase const& c) override { c.collide(*this); }
 };
 
 #include <vector>
@@ -117,34 +82,35 @@ struct C : Base
 
 int main()
 {
-    Collider c;
+    Collider collider;
     auto     a = std::make_unique<A>();
     auto     b = std::make_unique<B>();
-    a->visit(*b, c);
-    //    auto     collidees = std::vector<std::unique_ptr<Base>>();
-    //    collidees.push_back(std::make_unique<A>());
-    //    collidees.push_back(std::make_unique<B>());
-    //    collidees.push_back(std::make_unique<C>());
-
-    //    for (auto i = std::size_t { 0 }; i != collidees.size() - 1; ++i)
-    //        for (auto j = i + 1; j != collidees.size(); ++j)
-    //            collidees[i]->visit(*collidees[j], c);
+    auto     c = std::make_unique<C>();
+    a->collideWith(*b, collider);
+    a->collideWith(*c, collider);
+    b->collideWith(*c, collider);
 }
 
 void Collider::collide(A& a, A& a2) const
 {}
 
 void Collider::collide(A& a, B& b) const
-{}
+{
+    cout << "(a, b)\n";
+}
 
 void Collider::collide(A& a, C& c) const
-{}
+{
+    cout << "(a, c)\n";
+}
 
 void Collider::collide(C& a, A& c) const
 {}
 
 void Collider::collide(B& b, C& c) const
-{}
+{
+    cout << "(b, c)\n";
+}
 
 void Collider::collide(C& b, B& c) const
 {}
